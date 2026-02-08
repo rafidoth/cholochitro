@@ -6,6 +6,9 @@ const envSchema = z.object({
         .enum(["development", "production", "test"])
         .default("development"),
     PORT: z.coerce.number().default(4001),
+    DATABASE_URL: z.string().default('postgres://postgres:postgres@db:5432/cholochitro'),
+    JWT_SECRET: z.string().default('secret-key'),
+    JWT_EXPIRES_IN: z.string().default('7d'),
 });
 
 const parsedEnvs = envSchema.safeParse(process.env)
