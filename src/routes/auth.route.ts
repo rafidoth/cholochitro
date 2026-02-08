@@ -1,19 +1,25 @@
 import { Router } from "express";
 import { validateRequest } from "@/middlewares/http_request_validator";
-import { registerSchema } from "@/validation/http_request/auth.schema";
+import { registerSchema, loginSchema } from "@/types/auth.schema";
+import { registerHandler } from "@/controllers/register.controller";
+import { loginHandler, logoutHandler, getMeHandler } from "@/controllers/auth.controller";
+import { authenticate } from "@/middlewares/auth.middleware";
 
 export const authRouter: Router = Router();
 
+// Public routes
 authRouter.post(
     "/register",
     validateRequest({ body: registerSchema.shape.body }),
-    (req, res) => {
-        res.status(200).send({
-            message: "User registration endpoint hit",
-            body: req.body,
-        });
-    },
+    registerHandler
 );
-// authRouter.post('/login', validateRequest({ body: loginSchema.shape.body }), loginHandler);
-// authRouter.post('/refresh', validateRequest({ body: refreshSchema.shape.body }), refreshHandler);
-// authRouter.post('/revoke', validateRequest({ body: revokeSchema.shape.body }), revokeHandler);
+
+authRouter.post(
+    "/login",
+    validateRequest({ body: loginSchema.shape.body }),
+    loginHandler
+);
+
+// Protected routes
+authRouter.post("/logout", authenticate, logoutHandler);
+authRouter.get("/me", authenticate, getMeHandler);
