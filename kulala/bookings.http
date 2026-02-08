@@ -1,0 +1,252 @@
+### Bookings API Endpoints
+
+@baseUrl = http://localhost:4002/api/v1/bookings
+@showtimesUrl = http://localhost:4002/api/v1/showtimes
+@adminUrl = http://localhost:4002/api/v1/admin/bookings
+
+
+### ===== USER ROUTES (require authentication) =====
+
+###
+# Create a new booking
+# Note: Replace <token> with user JWT and <showtime-id> with actual UUID
+
+POST {{baseUrl}} HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "showtimeId": "<showtime-id>",
+  "seats": ["A1", "A2"]
+}
+
+
+###
+# Create booking - Single seat
+
+POST {{baseUrl}} HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "showtimeId": "<showtime-id>",
+  "seats": ["B5"]
+}
+
+
+###
+# Create booking - Multiple seats (max 10)
+
+POST {{baseUrl}} HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "showtimeId": "<showtime-id>",
+  "seats": ["C1", "C2", "C3", "C4", "C5"]
+}
+
+
+###
+# Create booking - Validation Error (no seats)
+
+POST {{baseUrl}} HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "showtimeId": "<showtime-id>",
+  "seats": []
+}
+
+
+###
+# Create booking - Validation Error (too many seats)
+
+POST {{baseUrl}} HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "showtimeId": "<showtime-id>",
+  "seats": ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10", "B1"]
+}
+
+
+###
+# Create booking - Validation Error (invalid seat format)
+
+POST {{baseUrl}} HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "showtimeId": "<showtime-id>",
+  "seats": ["Z99", "InvalidSeat"]
+}
+
+
+###
+# Create booking - Unauthorized (no token)
+
+POST {{baseUrl}} HTTP/1.1
+Content-Type: application/json
+
+{
+  "showtimeId": "<showtime-id>",
+  "seats": ["A1"]
+}
+
+
+###
+# List user's bookings
+# Note: Replace <token> with user JWT
+
+GET {{baseUrl}} HTTP/1.1
+Authorization: Bearer <token>
+
+
+###
+# List user's bookings with pagination
+
+GET {{baseUrl}}?page=1&limit=10 HTTP/1.1
+Authorization: Bearer <token>
+
+
+###
+# List user's bookings by status (pending)
+
+GET {{baseUrl}}?status=pending HTTP/1.1
+Authorization: Bearer <token>
+
+
+###
+# List user's bookings by status (confirmed)
+
+GET {{baseUrl}}?status=confirmed HTTP/1.1
+Authorization: Bearer <token>
+
+
+###
+# List user's bookings by status (cancelled)
+
+GET {{baseUrl}}?status=cancelled HTTP/1.1
+Authorization: Bearer <token>
+
+
+###
+# Get booking by ID
+# Note: Replace <booking-id> with actual UUID
+
+GET {{baseUrl}}/<booking-id> HTTP/1.1
+Authorization: Bearer <token>
+
+
+###
+# Get booking - Invalid ID format
+
+GET {{baseUrl}}/invalid-id HTTP/1.1
+Authorization: Bearer <token>
+
+
+###
+# Cancel booking
+# Note: Replace <booking-id> with actual UUID
+
+DELETE {{baseUrl}}/<booking-id> HTTP/1.1
+Authorization: Bearer <token>
+
+
+###
+# Confirm booking
+# Note: Replace <booking-id> with actual UUID
+
+POST {{baseUrl}}/<booking-id>/confirm HTTP/1.1
+Authorization: Bearer <token>
+
+
+### ===== SEAT AVAILABILITY (public route) =====
+
+###
+# Get seat availability for a showtime
+# Note: Replace <showtime-id> with actual UUID
+
+GET {{showtimesUrl}}/<showtime-id>/seats HTTP/1.1
+
+
+###
+# Get seat availability - Invalid showtime ID
+
+GET {{showtimesUrl}}/invalid-id/seats HTTP/1.1
+
+
+### ===== ADMIN ROUTES (require authentication + admin role) =====
+
+###
+# List all bookings (admin)
+# Note: Replace <admin-token> with admin JWT
+
+GET {{adminUrl}} HTTP/1.1
+Authorization: Bearer <admin-token>
+
+
+###
+# List all bookings with pagination (admin)
+
+GET {{adminUrl}}?page=1&limit=20 HTTP/1.1
+Authorization: Bearer <admin-token>
+
+
+###
+# List all bookings by status (admin)
+
+GET {{adminUrl}}?status=pending HTTP/1.1
+Authorization: Bearer <admin-token>
+
+
+###
+# Update booking status (admin)
+# Note: Replace <booking-id> with actual UUID
+
+PUT {{adminUrl}}/<booking-id>/status HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <admin-token>
+
+{
+  "status": "confirmed"
+}
+
+
+###
+# Update booking status to cancelled (admin)
+
+PUT {{adminUrl}}/<booking-id>/status HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <admin-token>
+
+{
+  "status": "cancelled"
+}
+
+
+###
+# Update booking status to pending (admin)
+
+PUT {{adminUrl}}/<booking-id>/status HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer <admin-token>
+
+{
+  "status": "pending"
+}
+
+
+###
+# Update booking status - Unauthorized (no token)
+
+PUT {{adminUrl}}/<booking-id>/status HTTP/1.1
+Content-Type: application/json
+
+{
+  "status": "confirmed"
+}
