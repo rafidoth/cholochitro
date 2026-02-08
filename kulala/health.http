@@ -3,7 +3,8 @@
 @baseUrl = http://localhost:4002/api/v1
 
 
-###
+### 
+
 # Health check endpoint
 
 GET {{baseUrl}}/health HTTP/1.1
