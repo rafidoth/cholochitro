@@ -28,7 +28,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
         status: {
             type: "booking_status",
             notNull: true,
-            default: "'pending'",
+            default: "pending",
         },
         total_price: {
             type: "decimal(10,2)",

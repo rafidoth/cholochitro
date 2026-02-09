@@ -11,7 +11,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
         role: {
             type: "user_role",
             notNull: true,
-            default: "'user'",
+            default: "user",
         },
     });
 

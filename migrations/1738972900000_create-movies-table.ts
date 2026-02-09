@@ -33,7 +33,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
         status: {
             type: "movie_status",
             notNull: true,
-            default: "'coming_soon'",
+            default: "coming_soon",
         },
         release_date: {
             type: "date",
