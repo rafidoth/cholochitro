@@ -4,17 +4,20 @@
   "description": "",
   "main": "dist/index.js",
   "type": "module",
+
+➜  cholochitro git:(main) ✗ 
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/index.ts | npx pino-pretty",
     "build": "tsc",
     "start": "node dist/index.js",
+    "migrate": "node --import tsx/esm node_modules/node-pg-migrate/bin/node-pg-migrate.js -m migrations -j ts",
+    "migrate:create": "pnpm migrate create"
+    
     "docker": "docker compose up",
     "database": "docker exec -it cholochitro-db-1 psql -U postgres",
-    "migrate": "node --import tsx/esm node_modules/node-pg-migrate/bin/node-pg-migrate.js -m migrations -j ts",
-    "migrate:up": "pnpm migrate up",
-    "migrate:down": "pnpm migrate down",
-    "migrate:create": "pnpm migrate create"
+    "migrate:up":"docker-compose exec app pnpm migrate up",
+    "migrate:up":"docker-compose exec app pnpm migrate down"
   },
   "keywords": [],
   "author": "",
@@ -36,7 +39,6 @@
     "express": "^5.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "node-pg-migrate": "^8.0.4",
     "pg": "^8.18.0",
     "pino": "^10.3.0",
     "zod": "^4.3.6"
