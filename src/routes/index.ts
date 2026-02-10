@@ -41,9 +41,9 @@ const healthCheck = async (req: Request, res: Response) => {
             status: "OK"
         })
     } catch (err) {
-
         res.status(3).json({
-            status: "OK"
+            status: "Faulty",
+            error: (err as Error).message
         })
     }
 }
