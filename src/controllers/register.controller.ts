@@ -1,4 +1,5 @@
 import { userService, UserServiceError } from "@/services/user.service";
+import { UserResponse } from "@/types/user";
 import { logger } from "@/utils/logger";
 import { Request, Response } from "express";
 
@@ -6,7 +7,7 @@ export const registerHandler = async (req: Request, res: Response) => {
     try {
         const { email, password, displayName } = req.body;
 
-        const user = await userService.register({
+        const user: UserResponse = await userService.register({
             email,
             password,
             displayName,
