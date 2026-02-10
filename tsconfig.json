@@ -13,7 +13,7 @@
     "sourceMap": true,
     "rootDir": "src",
     "outDir": "dist",
-    "types": ["node"],
+    "types": ["jest", "node"],
     "paths": {
       "@/*": ["src/*"]
     }

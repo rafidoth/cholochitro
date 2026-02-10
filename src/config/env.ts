@@ -17,7 +17,6 @@ if (!parsedEnvs.success) {
 }
 
 export const envs = parsedEnvs.data
-console.log(envs)
 
 
 
