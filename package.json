@@ -16,7 +16,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:docker": "docker compose exec app pnpm test",
-    "test:ci": "docker compose run --rm app pnpm test"
+    "test:ci": "docker compose run --rm app pnpm test",
+    "reset":"docker compose down -v && docker compose up --build"
   },
   "keywords": [],
   "author": "",
