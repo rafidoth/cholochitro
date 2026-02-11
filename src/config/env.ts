@@ -7,6 +7,7 @@ const envSchema = z.object({
         .default("development"),
     PORT: z.coerce.number().default(4001),
     DATABASE_URL: z.string().default('postgres://postgres:postgres@db:5432/cholochitro'),
+    TEST_DATABASE_URL: z.string().default('postgres://postgres:postgres@db:5432/cholochitro'),
     JWT_SECRET: z.string().default('secret-key'),
     JWT_EXPIRES_IN: z.string().default('7d'),
 });
