@@ -43,6 +43,27 @@ export const userRepository = {
         }
         return mapRowToUser(result.rows[0]);
     },
+
+    async deleteById(id: string): Promise<boolean> {
+        const query = `
+            DELETE FROM users
+            WHERE id = $1
+            RETURNING id
+        `;
+        const result = await pool.query(query, [id]);
+        return result.rowCount !== null && result.rowCount > 0;
+    },
+
+    async deleteByEmail(email: string): Promise<boolean> {
+        const query = `
+            DELETE FROM users
+            WHERE email = $1
+            RETURNING id
+        `;
+        const result = await pool.query(query, [email]);
+        return result.rowCount !== null && result.rowCount > 0;
+    }
+
 };
 
 function mapRowToUser(row: {
