@@ -3,12 +3,21 @@ import { envs } from './env'
 import { logger } from '@/utils/logger'
 
 const { Pool } = pg
-const connectionString = envs.DATABASE_URL
 
-export const pool = new Pool({
-    connectionString,
-})
+const createPool = (db_url: string) => {
+    return new Pool({
+        connectionString: db_url
+    })
+}
 
+const getConnectionString = () => {
+    if (envs.NODE_ENV === "test") {
+        return envs.TEST_DATABASE_URL
+    }
+    return envs.DATABASE_URL
+}
+
+export const pool = createPool(getConnectionString())
 
 export const pingDatabase = async () => {
     try {
