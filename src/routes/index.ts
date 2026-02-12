@@ -1,6 +1,7 @@
 import { Request, Response, Router } from "express";
 import { authRouter } from "@/routes/auth.route";
-import { movieRouter, adminMovieRouter } from "@/routes/movie.route";
+import { movieRouter } from "@/routes/movie.route";
+import { adminMovieRouter } from "@/routes/movie.admin.route";
 import { showtimeRouter, movieShowtimesRouter, adminShowtimeRouter } from "@/routes/showtime.route";
 import { bookingRouter, seatRouter, adminBookingRouter } from "@/routes/booking.route";
 import { pingDatabase } from "@/config/database"
