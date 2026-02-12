@@ -6,30 +6,30 @@ export const createMovieSchema = z.object({
         description: z.string().optional(),
         durationMinutes: z.number().int().positive("Duration must be a positive number"),
         genre: z.string().optional(),
-        posterUrl: z.string().url("Invalid URL").optional(),
+        posterUrl: z.url("Invalid URL").optional(),
         status: z.enum(["now_showing", "coming_soon", "ended"]).default("coming_soon"),
-        releaseDate: z.string().date("Invalid date format").optional(),
+        releaseDate: z.iso.datetime("Invalid date format").optional(),
     }),
 });
 
 export const updateMovieSchema = z.object({
     params: z.object({
-        id: z.string().uuid("Invalid movie ID"),
+        id: z.uuid("Invalid movie ID"),
     }),
     body: z.object({
         title: z.string().min(1, "Title is required").optional(),
         description: z.string().optional(),
         durationMinutes: z.number().int().positive("Duration must be a positive number").optional(),
         genre: z.string().optional(),
-        posterUrl: z.string().url("Invalid URL").optional(),
+        posterUrl: z.url("Invalid URL").optional(),
         status: z.enum(["now_showing", "coming_soon", "ended"]).optional(),
-        releaseDate: z.string().date("Invalid date format").optional(),
+        releaseDate: z.iso.datetime("Invalid date format").optional(),
     }),
 });
 
 export const movieIdParamSchema = z.object({
     params: z.object({
-        id: z.string().uuid("Invalid movie ID"),
+        id: z.uuid("Invalid movie ID"),
     }),
 });
 
