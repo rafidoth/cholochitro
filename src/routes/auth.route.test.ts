@@ -14,6 +14,7 @@ describe("auth routes", () => {
         email: "srafiulhasan@gmail.com",
         password: "super-secret-pass",
         role: 'user',
+        token: ""
     }
 
     afterAll(async () => {
@@ -34,7 +35,6 @@ describe("auth routes", () => {
                 .expect('Content-Type', /json/)
                 .expect(201);
 
-            logger.info({ response: response.body }, "respnse received from the request.")
             const userResponse: UserResponse = response.body.data
             testUser.id = userResponse.id
 
@@ -148,6 +148,123 @@ describe("auth routes", () => {
         })
     })
 
+    describe("POST /auth/login", () => {
+        it("should return 200 for successful login", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({
+                    email: testUser.email,
+                    password: testUser.password,
+                })
+                .expect('Content-Type', /json/)
+                .expect(200);
+
+            const userResponse: UserResponse = response.body.data.user
+            testUser.id = userResponse.id
+            const token: string = response.body.data.token
+            testUser.token = token
+
+            expect(userResponse.email).toBe(testUser.email)
+            expect(userResponse.displayName).toBe(testUser.name)
+            expect(userResponse.role).toBe(testUser.role)
+        })
+
+        it("should return a valid JWT token on successful login", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({
+                    email: testUser.email,
+                    password: testUser.password,
+                })
+                .expect(200);
+
+            expect(response.body.data).toHaveProperty('token')
+            expect(typeof response.body.data.token).toBe('string')
+            expect(response.body.data.token.length).toBeGreaterThan(0)
+            // JWT tokens have 3 parts separated by dots
+            expect(response.body.data.token.split('.').length).toBe(3)
+        })
+
+        it("should return 401 for non-existent email", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({
+                    email: "nonexistent@example.com",
+                    password: "somepassword",
+                })
+                .expect('Content-Type', /json/)
+                .expect(401);
+
+            expect(response.body.success).toBe(false)
+            expect(response.body.code).toBe('INVALID_CREDENTIALS')
+        })
+
+        it("should return 401 for wrong password", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({
+                    email: testUser.email,
+                    password: "wrong-password",
+                })
+                .expect('Content-Type', /json/)
+                .expect(401);
+
+            expect(response.body.success).toBe(false)
+            expect(response.body.code).toBe('INVALID_CREDENTIALS')
+        })
+
+        it("should return 400 for invalid email format", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({
+                    email: "invalid-email",
+                    password: "validpassword123",
+                })
+                .expect('Content-Type', /json/)
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error')
+        })
+
+        it("should return 400 for missing email field", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({
+                    password: "validpassword123",
+                })
+                .expect('Content-Type', /json/)
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error')
+        })
+
+        it("should return 400 for missing password field", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({
+                    email: "test@example.com",
+                })
+                .expect('Content-Type', /json/)
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error')
+        })
+
+        it("should return 400 for empty request body", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({})
+                .expect('Content-Type', /json/)
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error')
+        })
+
+        it("should return 400 for empty password string", async () => {
+            const response = await request(app).post('/api/v1/auth/login')
+                .send({
+                    email: "test@example.com",
+                    password: "",
+                })
+                .expect('Content-Type', /json/)
+                .expect(400);
+
+            expect(response.body).toHaveProperty('error')
+        })
+    })
+
     describe("cleanup", () => {
         it("should delete the test user from database", async () => {
             expect(testUser.id).toBeTruthy()
@@ -161,4 +278,5 @@ describe("auth routes", () => {
             testUser.id = ""
         })
     })
+
 })
