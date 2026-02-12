@@ -23,11 +23,21 @@ export const registerHandler = async (req: Request, res: Response) => {
     } catch (error) {
         if (error instanceof UserServiceError) {
             logger.warn({ code: error.code, message: error.message }, "Registration failed");
-            res.status(error.statusCode).json({
-                success: false,
-                message: error.message,
-                code: error.code,
-            });
+
+            switch (error.code) {
+                case "EMAIL_EXISTS":
+                    res.status(400).json({
+                        success: false,
+                        error: error.message,
+                    })
+                    break;
+                default:
+                    res.status(400).json({
+                        success: false,
+                        error: error.message,
+                        code: error.code,
+                    });
+            }
             return;
         }
 

@@ -43,8 +43,8 @@ export const validateRequest = (schemas: RequestValidationSchemas) => {
                     error,
                     route: req.path
                 }, "Request Validation Error")
-                res.status(422).json({
-                    message: "Validation Error"
+                res.status(400).json({
+                    error: "Validation Error"
                 })
                 return;
             }
