@@ -21,5 +21,6 @@ authRouter.post(
 );
 
 // Protected routes
+// TODO Not tested yet
 authRouter.post("/logout", authenticate, logoutHandler);
 authRouter.get("/me", authenticate, getMeHandler);
