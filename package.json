@@ -12,7 +12,7 @@
     "database": "docker exec -it cholochitro-db-1 psql -U postgres",
     "app":"docker exec -it cholochitro-app-1 /bin/sh",
     "migrate": "node-pg-migrate",
-    "migrate:create": "pnpm migrate create",
+    "migrate:create": "pnpm migrate create -j ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:docker": "docker compose exec app pnpm test",
