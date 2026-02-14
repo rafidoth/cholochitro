@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
-import type { Booking, BookingStatus } from '@/lib/types';
+import { useBookings, useCancelBooking, useConfirmBooking } from '@/hooks';
+import type { Booking } from '@/lib/types';
+import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS } from '@/lib/types';
+import { formatShortDate, formatTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,46 +27,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Calendar, Clock, Film, Ticket, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Ticket, Loader2 } from 'lucide-react';
 
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function formatTime(timeString: string) {
-  const [hours, minutes] = timeString.split(':');
-  const hour = parseInt(hours, 10);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${ampm}`;
-}
-
-const statusColors: Record<BookingStatus, string> = {
-  pending: 'bg-yellow-500',
-  confirmed: 'bg-green-500',
-  cancelled: 'bg-red-500',
-};
-
-const statusLabels: Record<BookingStatus, string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  cancelled: 'Cancelled',
-};
-
-function BookingCard({
-  booking,
-  onCancel,
-  onConfirm,
-}: {
+// Memoized BookingCard component
+interface BookingCardProps {
   booking: Booking;
   onCancel: (id: string) => void;
   onConfirm: (id: string) => void;
-}) {
+  isConfirming: boolean;
+}
+
+const BookingCard = memo(function BookingCard({
+  booking,
+  onCancel,
+  onConfirm,
+  isConfirming,
+}: BookingCardProps) {
+  const handleCancel = useCallback(() => {
+    onCancel(booking.id);
+  }, [booking.id, onCancel]);
+
+  const handleConfirm = useCallback(() => {
+    onConfirm(booking.id);
+  }, [booking.id, onConfirm]);
+
+  // Use toSorted for immutability
+  const sortedSeats = useMemo(
+    () => booking.seats.toSorted(),
+    [booking.seats]
+  );
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -77,27 +69,27 @@ function BookingCard({
               Booking ID: {booking.id.slice(0, 8)}...
             </p>
           </div>
-          <Badge className={statusColors[booking.status]}>
-            {statusLabels[booking.status]}
+          <Badge className={BOOKING_STATUS_COLORS[booking.status]}>
+            {BOOKING_STATUS_LABELS[booking.status]}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {booking.showtime && (
+        {booking.showtime ? (
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Calendar className="h-4 w-4" />
-              <span>{formatDate(booking.showtime.showDate)}</span>
+              <span>{formatShortDate(booking.showtime.showDate)}</span>
             </div>
             <div className="flex items-center gap-1">
               <Clock className="h-4 w-4" />
               <span>{formatTime(booking.showtime.showTime)}</span>
             </div>
           </div>
-        )}
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <span className="text-sm text-muted-foreground">Seats:</span>
-          {booking.seats.sort().map((seat) => (
+          {sortedSeats.map((seat) => (
             <Badge key={seat} variant="secondary">
               {seat}
             </Badge>
@@ -109,36 +101,42 @@ function BookingCard({
         </div>
       </CardContent>
       <CardFooter className="flex gap-2">
-        {booking.status === 'pending' && (
+        {booking.status === 'pending' ? (
           <>
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => onCancel(booking.id)}
+              onClick={handleCancel}
             >
               Cancel
             </Button>
-            <Button className="flex-1" onClick={() => onConfirm(booking.id)}>
+            <Button
+              className="flex-1"
+              onClick={handleConfirm}
+              disabled={isConfirming}
+            >
+              {isConfirming ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Confirm & Pay
             </Button>
           </>
-        )}
-        {booking.status === 'confirmed' && (
+        ) : null}
+        {booking.status === 'confirmed' ? (
           <Button asChild className="w-full">
             <Link href={`/bookings/${booking.id}`}>View Ticket</Link>
           </Button>
-        )}
-        {booking.status === 'cancelled' && (
+        ) : null}
+        {booking.status === 'cancelled' ? (
           <Button variant="outline" asChild className="w-full">
             <Link href="/movies">Book Again</Link>
           </Button>
-        )}
+        ) : null}
       </CardFooter>
     </Card>
   );
-}
+});
 
-function BookingCardSkeleton() {
+// Memoized skeleton component
+const BookingCardSkeleton = memo(function BookingCardSkeleton() {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -155,86 +153,140 @@ function BookingCardSkeleton() {
       </CardFooter>
     </Card>
   );
+});
+
+// Hoist static skeleton array count
+const SKELETON_COUNT = 6;
+
+// Empty state component
+interface EmptyStateProps {
+  hasFilter: boolean;
 }
+
+const EmptyState = memo(function EmptyState({ hasFilter }: EmptyStateProps) {
+  return (
+    <div className="text-center py-16">
+      <Ticket className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+      <h2 className="text-xl font-semibold mb-2">No bookings found</h2>
+      <p className="text-muted-foreground mb-4">
+        {hasFilter
+          ? 'Try changing the filter to see more bookings'
+          : "You haven't made any bookings yet"}
+      </p>
+      <Button asChild>
+        <Link href="/movies">Browse Movies</Link>
+      </Button>
+    </div>
+  );
+});
+
+// Memoized Pagination component
+interface PaginationProps {
+  page: number;
+  totalPages: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}
+
+const Pagination = memo(function Pagination({
+  page,
+  totalPages,
+  onPrevious,
+  onNext,
+}: PaginationProps) {
+  return (
+    <div className="flex justify-center gap-2 mt-8">
+      <Button
+        variant="outline"
+        onClick={onPrevious}
+        disabled={page === 1}
+      >
+        Previous
+      </Button>
+      <span className="flex items-center px-4 text-sm text-muted-foreground">
+        Page {page} of {totalPages}
+      </span>
+      <Button
+        variant="outline"
+        onClick={onNext}
+        disabled={page === totalPages}
+      >
+        Next
+      </Button>
+    </div>
+  );
+});
+
+// Auth loading state - hoisted
+const authLoadingState = (
+  <div className="container py-8">
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin" />
+    </div>
+  </div>
+);
 
 export default function BookingsPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<string>('all');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [cancelDialog, setCancelDialog] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/auth/login?redirect=/bookings');
-    }
-  }, [authLoading, isAuthenticated, router]);
+  // TanStack Query hooks
+  const { data: bookingsData, isLoading } = useBookings({
+    status: status === 'all' ? undefined : status,
+    page,
+    limit: 10,
+  });
 
-  useEffect(() => {
-    const fetchBookings = async () => {
-      setIsLoading(true);
-      try {
-        const response = await api.getBookings({
-          status: status === 'all' ? undefined : status,
-          page,
-          limit: 10,
-        });
-        setBookings(response.data.bookings);
-        setTotalPages(response.data.totalPages);
-      } catch (error) {
-        console.error('Failed to fetch bookings:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const cancelMutation = useCancelBooking();
+  const confirmMutation = useConfirmBooking();
 
-    if (isAuthenticated) {
-      fetchBookings();
-    }
-  }, [status, page, isAuthenticated]);
+  const bookings = bookingsData?.data.bookings ?? [];
+  const totalPages = bookingsData?.data.totalPages ?? 1;
 
-  const handleCancel = async (id: string) => {
-    setActionLoading(id);
-    try {
-      await api.cancelBooking(id);
-      setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: 'cancelled' as const } : b))
-      );
-    } catch (error) {
-      console.error('Failed to cancel booking:', error);
-    } finally {
-      setActionLoading(null);
-      setCancelDialog(null);
-    }
-  };
+  // Memoized callbacks
+  const handleStatusChange = useCallback((value: string) => {
+    setStatus(value);
+    setPage(1);
+  }, []);
 
-  const handleConfirm = async (id: string) => {
-    setActionLoading(id);
-    try {
-      await api.confirmBooking(id);
-      setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: 'confirmed' as const } : b))
-      );
-    } catch (error) {
-      console.error('Failed to confirm booking:', error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  const handleCancel = useCallback(async (id: string) => {
+    await cancelMutation.mutateAsync(id);
+    setCancelDialog(null);
+  }, [cancelMutation]);
+
+  const handleConfirm = useCallback(async (id: string) => {
+    await confirmMutation.mutateAsync(id);
+  }, [confirmMutation]);
+
+  const openCancelDialog = useCallback((id: string) => {
+    setCancelDialog(id);
+  }, []);
+
+  const closeCancelDialog = useCallback(() => {
+    setCancelDialog(null);
+  }, []);
+
+  // Use functional setState for pagination
+  const handlePrevious = useCallback(() => {
+    setPage((p) => Math.max(1, p - 1));
+  }, []);
+
+  const handleNext = useCallback(() => {
+    setPage((p) => Math.min(totalPages, p + 1));
+  }, [totalPages]);
+
+  // Redirect if not authenticated
+  if (!authLoading && !isAuthenticated) {
+    router.push('/auth/login?redirect=/bookings');
+    return null;
+  }
 
   if (authLoading) {
-    return (
-      <div className="container py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-    );
+    return authLoadingState;
   }
 
   return (
@@ -244,13 +296,7 @@ export default function BookingsPage() {
           <h1 className="text-3xl font-bold">My Bookings</h1>
           <p className="text-muted-foreground">Manage your movie ticket bookings</p>
         </div>
-        <Select
-          value={status}
-          onValueChange={(value) => {
-            setStatus(value);
-            setPage(1);
-          }}
-        >
+        <Select value={status} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
@@ -265,23 +311,12 @@ export default function BookingsPage() {
 
       {isLoading ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <BookingCardSkeleton key={i} />
           ))}
         </div>
       ) : bookings.length === 0 ? (
-        <div className="text-center py-16">
-          <Ticket className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">No bookings found</h2>
-          <p className="text-muted-foreground mb-4">
-            {status !== 'all'
-              ? 'Try changing the filter to see more bookings'
-              : "You haven't made any bookings yet"}
-          </p>
-          <Button asChild>
-            <Link href="/movies">Browse Movies</Link>
-          </Button>
-        </div>
+        <EmptyState hasFilter={status !== 'all'} />
       ) : (
         <>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -289,38 +324,26 @@ export default function BookingsPage() {
               <BookingCard
                 key={booking.id}
                 booking={booking}
-                onCancel={() => setCancelDialog(booking.id)}
+                onCancel={openCancelDialog}
                 onConfirm={handleConfirm}
+                isConfirming={confirmMutation.isPending && confirmMutation.variables === booking.id}
               />
             ))}
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex justify-center gap-2 mt-8">
-              <Button
-                variant="outline"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <span className="flex items-center px-4 text-sm text-muted-foreground">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
+          {totalPages > 1 ? (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPrevious={handlePrevious}
+              onNext={handleNext}
+            />
+          ) : null}
         </>
       )}
 
       {/* Cancel Confirmation Dialog */}
-      <Dialog open={!!cancelDialog} onOpenChange={() => setCancelDialog(null)}>
+      <Dialog open={!!cancelDialog} onOpenChange={closeCancelDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancel Booking</DialogTitle>
@@ -329,15 +352,15 @@ export default function BookingsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialog(null)}>
+            <Button variant="outline" onClick={closeCancelDialog}>
               Keep Booking
             </Button>
             <Button
               variant="destructive"
               onClick={() => cancelDialog && handleCancel(cancelDialog)}
-              disabled={!!actionLoading}
+              disabled={cancelMutation.isPending}
             >
-              {actionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {cancelMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Cancel Booking
             </Button>
           </DialogFooter>

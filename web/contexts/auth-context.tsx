@@ -1,6 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCurrentUser, useLogin, useRegister, useLogout } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
 import type { User } from '@/lib/types';
 
@@ -17,51 +19,35 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const refreshUser = useCallback(async () => {
-    try {
-      const token = api.getToken();
-      if (!token) {
-        setUser(null);
-        return;
-      }
-      const response = await api.getMe();
-      setUser(response.data);
-    } catch {
-      setUser(null);
-      api.setToken(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    const init = async () => {
-      await refreshUser();
-      setIsLoading(false);
-    };
-    init();
-  }, [refreshUser]);
+  const queryClient = useQueryClient();
+  
+  const { data: user, isLoading, refetch } = useCurrentUser();
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
+  const logoutMutation = useLogout();
 
   const login = async (email: string, password: string) => {
-    const response = await api.login(email, password);
-    setUser(response.data.user);
+    await loginMutation.mutateAsync({ email, password });
   };
 
   const register = async (email: string, password: string, displayName: string) => {
-    const response = await api.register(email, password, displayName);
-    setUser(response.data.user);
+    await registerMutation.mutateAsync({ email, password, displayName });
   };
 
   const logout = async () => {
-    await api.logout();
-    setUser(null);
+    await logoutMutation.mutateAsync();
+  };
+
+  const refreshUser = async () => {
+    if (api.getToken()) {
+      await refetch();
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: user ?? null,
         isLoading,
         isAuthenticated: !!user,
         login,

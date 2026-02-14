@@ -133,3 +133,28 @@ export interface ApiError {
   message: string;
   code: string;
 }
+
+// Status styling constants - hoisted to module level for performance
+export const MOVIE_STATUS_COLORS: Record<MovieStatus, string> = {
+  now_showing: 'bg-green-500',
+  coming_soon: 'bg-blue-500',
+  ended: 'bg-gray-500',
+} as const;
+
+export const MOVIE_STATUS_LABELS: Record<MovieStatus, string> = {
+  now_showing: 'Now Showing',
+  coming_soon: 'Coming Soon',
+  ended: 'Ended',
+} as const;
+
+export const BOOKING_STATUS_COLORS: Record<BookingStatus, string> = {
+  pending: 'bg-yellow-500',
+  confirmed: 'bg-green-500',
+  cancelled: 'bg-red-500',
+} as const;
+
+export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  cancelled: 'Cancelled',
+} as const;

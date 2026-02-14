@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
-import type { Movie, MovieStatus } from '@/lib/types';
+import { useState, useCallback, memo, useMemo } from 'react';
+import { useMovies, useCreateMovie, useUpdateMovie, useDeleteMovie } from '@/hooks';
+import type { Movie } from '@/lib/types';
+import { MOVIE_STATUS_COLORS, MOVIE_STATUS_LABELS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,18 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 
-const statusColors: Record<MovieStatus, string> = {
-    now_showing: 'bg-green-500',
-    coming_soon: 'bg-blue-500',
-    ended: 'bg-gray-500',
-};
-
-const statusLabels: Record<MovieStatus, string> = {
-    now_showing: 'Now Showing',
-    coming_soon: 'Coming Soon',
-    ended: 'Ended',
-};
-
+// Form data interface
 interface MovieFormData {
     title: string;
     description: string;
@@ -55,7 +45,8 @@ interface MovieFormData {
     releaseDate: string;
 }
 
-const initialFormData: MovieFormData = {
+// Hoisted initial form data constant
+const INITIAL_FORM_DATA: MovieFormData = {
     title: '',
     description: '',
     durationMinutes: '',
@@ -63,45 +54,124 @@ const initialFormData: MovieFormData = {
     posterUrl: '',
     status: 'coming_soon',
     releaseDate: '',
-};
+} as const;
+
+const SKELETON_COUNT = 5;
+
+// Memoized table header
+const tableHeader = (
+    <TableHeader>
+        <TableRow>
+            <TableHead>Title</TableHead>
+            <TableHead>Genre</TableHead>
+            <TableHead>Duration</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+    </TableHeader>
+);
+
+// Memoized MovieRow component
+interface MovieRowProps {
+    movie: Movie;
+    onEdit: (movie: Movie) => void;
+    onDelete: (id: string) => void;
+}
+
+const MovieRow = memo(function MovieRow({ movie, onEdit, onDelete }: MovieRowProps) {
+    const handleEdit = useCallback(() => onEdit(movie), [movie, onEdit]);
+    const handleDelete = useCallback(() => onDelete(movie.id), [movie.id, onDelete]);
+
+    return (
+        <TableRow>
+            <TableCell className="font-medium">{movie.title}</TableCell>
+            <TableCell>{movie.genre || '-'}</TableCell>
+            <TableCell>{movie.durationMinutes} min</TableCell>
+            <TableCell>
+                <Badge className={MOVIE_STATUS_COLORS[movie.status]}>
+                    {MOVIE_STATUS_LABELS[movie.status]}
+                </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+                <Button variant="ghost" size="sm" onClick={handleEdit}>
+                    <Pencil className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleDelete}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </TableCell>
+        </TableRow>
+    );
+});
+
+// Memoized Pagination component
+interface PaginationProps {
+    page: number;
+    totalPages: number;
+    onPrevious: () => void;
+    onNext: () => void;
+}
+
+const Pagination = memo(function Pagination({
+    page,
+    totalPages,
+    onPrevious,
+    onNext,
+}: PaginationProps) {
+    return (
+        <div className="flex justify-center gap-2 mt-4">
+            <Button variant="outline" onClick={onPrevious} disabled={page === 1}>
+                Previous
+            </Button>
+            <span className="flex items-center px-4 text-sm">
+                Page {page} of {totalPages}
+            </span>
+            <Button variant="outline" onClick={onNext} disabled={page === totalPages}>
+                Next
+            </Button>
+        </div>
+    );
+});
+
+// Memoized Loading Skeleton
+const LoadingSkeleton = memo(function LoadingSkeleton() {
+    return (
+        <div className="space-y-4">
+            {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+            ))}
+        </div>
+    );
+});
 
 export default function AdminMoviesPage() {
-    const [movies, setMovies] = useState<Movie[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [deleteDialog, setDeleteDialog] = useState<string | null>(null);
     const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
-    const [formData, setFormData] = useState<MovieFormData>(initialFormData);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formData, setFormData] = useState<MovieFormData>(INITIAL_FORM_DATA);
     const [error, setError] = useState('');
 
-    const fetchMovies = async () => {
-        setIsLoading(true);
-        try {
-            const response = await api.getMovies({ page, limit: 10 });
-            setMovies(response.data.movies);
-            setTotalPages(response.data.totalPages);
-        } catch (err) {
-            console.error('Failed to fetch movies:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    // TanStack Query hooks
+    const { data: moviesData, isLoading } = useMovies({ page, limit: 10 });
+    const createMutation = useCreateMovie();
+    const updateMutation = useUpdateMovie();
+    const deleteMutation = useDeleteMovie();
 
-    useEffect(() => {
-        fetchMovies();
-    }, [page]);
+    const movies = moviesData?.data.movies ?? [];
+    const totalPages = moviesData?.data.totalPages ?? 1;
 
-    const openCreateDialog = () => {
+    const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+    // Memoized callbacks
+    const openCreateDialog = useCallback(() => {
         setEditingMovie(null);
-        setFormData(initialFormData);
+        setFormData(INITIAL_FORM_DATA);
         setError('');
         setDialogOpen(true);
-    };
+    }, []);
 
-    const openEditDialog = (movie: Movie) => {
+    const openEditDialog = useCallback((movie: Movie) => {
         setEditingMovie(movie);
         setFormData({
             title: movie.title,
@@ -114,12 +184,23 @@ export default function AdminMoviesPage() {
         });
         setError('');
         setDialogOpen(true);
-    };
+    }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const closeDialog = useCallback(() => {
+        setDialogOpen(false);
+    }, []);
+
+    const openDeleteDialog = useCallback((id: string) => {
+        setDeleteDialog(id);
+    }, []);
+
+    const closeDeleteDialog = useCallback(() => {
+        setDeleteDialog(null);
+    }, []);
+
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        setIsSubmitting(true);
 
         try {
             const payload = {
@@ -129,36 +210,58 @@ export default function AdminMoviesPage() {
                 genre: formData.genre || undefined,
                 posterUrl: formData.posterUrl || undefined,
                 status: formData.status,
-                releaseDate: new Date(formData.releaseDate).toISOString() || undefined,
+                releaseDate: formData.releaseDate ? new Date(formData.releaseDate).toISOString() : undefined,
             };
 
             if (editingMovie) {
-                await api.updateMovie(editingMovie.id, payload);
+                await updateMutation.mutateAsync({ id: editingMovie.id, movie: payload });
             } else {
-                await api.createMovie(payload);
+                await createMutation.mutateAsync(payload);
             }
 
             setDialogOpen(false);
-            fetchMovies();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to save movie');
-        } finally {
-            setIsSubmitting(false);
         }
-    };
+    }, [formData, editingMovie, updateMutation, createMutation]);
 
-    const handleDelete = async (id: string) => {
-        setIsSubmitting(true);
+    const handleDelete = useCallback(async (id: string) => {
         try {
-            await api.deleteMovie(id);
+            await deleteMutation.mutateAsync(id);
             setDeleteDialog(null);
-            fetchMovies();
         } catch (err) {
             console.error('Failed to delete movie:', err);
-        } finally {
-            setIsSubmitting(false);
         }
-    };
+    }, [deleteMutation]);
+
+    // Functional setState for pagination
+    const handlePrevious = useCallback(() => {
+        setPage((p) => Math.max(1, p - 1));
+    }, []);
+
+    const handleNext = useCallback(() => {
+        setPage((p) => Math.min(totalPages, p + 1));
+    }, [totalPages]);
+
+    // Form field handlers using functional updates
+    const handleFieldChange = useCallback((field: keyof MovieFormData) => (
+        e: React.ChangeEvent<HTMLInputElement>
+    ) => {
+        setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+    }, []);
+
+    const handleStatusChange = useCallback((value: string) => {
+        setFormData((prev) => ({ ...prev, status: value }));
+    }, []);
+
+    // Memoize error alert to avoid recreating on every render
+    const errorAlert = useMemo(() => (
+        error ? (
+            <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+            </Alert>
+        ) : null
+    ), [error]);
 
     return (
         <div>
@@ -174,83 +277,38 @@ export default function AdminMoviesPage() {
             </div>
 
             {isLoading ? (
-                <div className="space-y-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <Skeleton key={i} className="h-16 w-full" />
-                    ))}
-                </div>
+                <LoadingSkeleton />
             ) : (
                 <>
                     <div className="border rounded-lg">
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Title</TableHead>
-                                    <TableHead>Genre</TableHead>
-                                    <TableHead>Duration</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
+                            {tableHeader}
                             <TableBody>
                                 {movies.map((movie) => (
-                                    <TableRow key={movie.id}>
-                                        <TableCell className="font-medium">{movie.title}</TableCell>
-                                        <TableCell>{movie.genre || '-'}</TableCell>
-                                        <TableCell>{movie.durationMinutes} min</TableCell>
-                                        <TableCell>
-                                            <Badge className={statusColors[movie.status]}>
-                                                {statusLabels[movie.status]}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => openEditDialog(movie)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setDeleteDialog(movie.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
+                                    <MovieRow
+                                        key={movie.id}
+                                        movie={movie}
+                                        onEdit={openEditDialog}
+                                        onDelete={openDeleteDialog}
+                                    />
                                 ))}
                             </TableBody>
                         </Table>
                     </div>
 
-                    {totalPages > 1 && (
-                        <div className="flex justify-center gap-2 mt-4">
-                            <Button
-                                variant="outline"
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                            >
-                                Previous
-                            </Button>
-                            <span className="flex items-center px-4 text-sm">
-                                Page {page} of {totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                disabled={page === totalPages}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    )}
+                    {totalPages > 1 ? (
+                        <Pagination
+                            page={page}
+                            totalPages={totalPages}
+                            onPrevious={handlePrevious}
+                            onNext={handleNext}
+                        />
+                    ) : null}
                 </>
             )}
 
             {/* Create/Edit Dialog */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={dialogOpen} onOpenChange={closeDialog}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
                         <DialogTitle>
@@ -259,17 +317,13 @@ export default function AdminMoviesPage() {
                     </DialogHeader>
                     <form onSubmit={handleSubmit}>
                         <div className="space-y-4 py-4">
-                            {error && (
-                                <Alert variant="destructive">
-                                    <AlertDescription>{error}</AlertDescription>
-                                </Alert>
-                            )}
+                            {errorAlert}
                             <div className="space-y-2">
                                 <Label htmlFor="title">Title *</Label>
                                 <Input
                                     id="title"
                                     value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    onChange={handleFieldChange('title')}
                                     required
                                 />
                             </div>
@@ -278,7 +332,7 @@ export default function AdminMoviesPage() {
                                 <Input
                                     id="description"
                                     value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    onChange={handleFieldChange('description')}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -289,7 +343,7 @@ export default function AdminMoviesPage() {
                                         type="number"
                                         min="1"
                                         value={formData.durationMinutes}
-                                        onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
+                                        onChange={handleFieldChange('durationMinutes')}
                                         required
                                     />
                                 </div>
@@ -298,7 +352,7 @@ export default function AdminMoviesPage() {
                                     <Input
                                         id="genre"
                                         value={formData.genre}
-                                        onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
+                                        onChange={handleFieldChange('genre')}
                                     />
                                 </div>
                             </div>
@@ -308,16 +362,13 @@ export default function AdminMoviesPage() {
                                     id="posterUrl"
                                     type="url"
                                     value={formData.posterUrl}
-                                    onChange={(e) => setFormData({ ...formData, posterUrl: e.target.value })}
+                                    onChange={handleFieldChange('posterUrl')}
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="status">Status</Label>
-                                    <Select
-                                        value={formData.status}
-                                        onValueChange={(value) => setFormData({ ...formData, status: value })}
-                                    >
+                                    <Select value={formData.status} onValueChange={handleStatusChange}>
                                         <SelectTrigger>
                                             <SelectValue />
                                         </SelectTrigger>
@@ -334,17 +385,17 @@ export default function AdminMoviesPage() {
                                         id="releaseDate"
                                         type="date"
                                         value={formData.releaseDate}
-                                        onChange={(e) => setFormData({ ...formData, releaseDate: e.target.value })}
+                                        onChange={handleFieldChange('releaseDate')}
                                     />
                                 </div>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                            <Button type="button" variant="outline" onClick={closeDialog}>
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                                 {editingMovie ? 'Save Changes' : 'Create Movie'}
                             </Button>
                         </DialogFooter>
@@ -353,7 +404,7 @@ export default function AdminMoviesPage() {
             </Dialog>
 
             {/* Delete Confirmation Dialog */}
-            <Dialog open={!!deleteDialog} onOpenChange={() => setDeleteDialog(null)}>
+            <Dialog open={!!deleteDialog} onOpenChange={closeDeleteDialog}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Delete Movie</DialogTitle>
@@ -362,15 +413,15 @@ export default function AdminMoviesPage() {
                         Are you sure you want to delete this movie? This action cannot be undone.
                     </p>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteDialog(null)}>
+                        <Button variant="outline" onClick={closeDeleteDialog}>
                             Cancel
                         </Button>
                         <Button
                             variant="destructive"
                             onClick={() => deleteDialog && handleDelete(deleteDialog)}
-                            disabled={isSubmitting}
+                            disabled={deleteMutation.isPending}
                         >
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {deleteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Delete
                         </Button>
                     </DialogFooter>
