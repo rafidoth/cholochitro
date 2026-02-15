@@ -1,4 +1,3 @@
-
 # Cholochitro - Movie Ticket Booking System
 
 A production-ready, scalable movie ticket booking backend engineered to handle **20,000+ concurrent requests**. Built with modern software engineering best practices including clean architecture, comprehensive testing, and containerized deployment.

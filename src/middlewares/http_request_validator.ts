@@ -12,11 +12,11 @@ export interface RequestValidationSchemas {
     query?: Schema;
 }
 
-const formatedError = (error: ZodError) =>
-    error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-    }));
+// const formatedError = (error: ZodError) =>
+//     error.issues.map((issue) => ({
+//         path: issue.path.join("."),
+//         message: issue.message,
+//     }));
 
 export const validateRequest = (schemas: RequestValidationSchemas) => {
     return (req: Request, res: Response, next: NextFunction) => {
@@ -33,21 +33,23 @@ export const validateRequest = (schemas: RequestValidationSchemas) => {
 
             if (schemas.query) {
                 const parsedQuery = schemas.query.parse(req.query) as QueryRecord;
-                req.query = parsedQuery as Request["query"];
+                Object.assign(req.query, parsedQuery);
             }
 
             next();
         } catch (error) {
+            logger.error({
+                error,
+                route: req.path
+            }, "Request Validation Error")
+
             if (error instanceof ZodError) {
-                logger.error({
-                    error,
-                    route: req.path
-                }, "Request Validation Error")
                 res.status(400).json({
                     error: "Validation Error"
                 })
                 return;
             }
+
 
             next(error);
         }
