@@ -62,7 +62,20 @@ export interface ShowtimeWithMovie extends Showtime {
 
 export interface ShowtimesResponse {
     success: boolean;
-    data: Showtime[]
+    data: {
+        showtimes: Showtime[],
+        total: number,
+        page: number,
+        limit: number,
+        totalPages: number,
+
+    }
+}
+
+export interface ShowtimesResponseForMovie {
+
+    success: boolean,
+    data: Showtime[],
 }
 
 export interface SeatsResponse {
