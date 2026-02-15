@@ -86,7 +86,7 @@ const ShowtimeButton = memo(function ShowtimeButton({
     movieId: string;
 }) {
     return (
-        <Button variant="outline" asChild>
+        <Button variant="ghost" asChild>
             <Link href={`/movies/${movieId}/book/${showtime.id}`}>
                 <span className="font-medium">{formatTime(showtime.showTime)}</span>
                 <span className="ml-2 text-muted-foreground">${showtime.price}</span>
