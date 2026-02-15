@@ -2,6 +2,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Film, Ticket, Calendar } from "lucide-react";
 
+import { Merriweather } from "next/font/google";
+
+const merriweather = Merriweather({
+    subsets: ["latin"]
+})
 // Hoisted static feature data - avoids re-creation on each render
 const features = [
     {
@@ -25,10 +30,12 @@ const heroSection = (
     <section className="py-20 lg:py-32">
         <div className="container">
             <div className="max-w-3xl mx-auto text-center space-y-8">
-                <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-                    Book Your Perfect
-                    <span className="text-primary"> Movie Experience</span>
-                </h1>
+                <span className={`${merriweather.className}`}>
+                    <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+                        Book Your Perfect
+                        <span className="text-primary"> Movie Experience</span>
+                    </h1>
+                </span>
                 <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
                     Discover the latest movies, choose your favorite seats, and enjoy the show.
                     Your cinema adventure starts here.
