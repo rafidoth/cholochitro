@@ -5,7 +5,7 @@
  * It logs in as admin, creates test movies, showtimes, and test users.
  * 
  * Run this BEFORE executing k6 load tests:
- *   node k6/data/_seed-data.js
+ *   node k6/data/seed-data.js
  * Or:
  *   pnpm k6:seed
  * 
@@ -51,7 +51,7 @@ async function request(method, endpoint, body = null, token = null) {
 async function login(email, password) {
     const { status, data } = await request('POST', '/auth/login', { email, password });
     if (status === 200 && data?.data?.token) {
-        return data.token;
+        return data.data.token;
     }
     throw new Error(`Login failed for ${email}: ${status} - ${JSON.stringify(data)}`);
 }
@@ -69,7 +69,7 @@ async function register(name, email, password) {
 
     // User might already exist
     if (status === 409) {
-        console.log(`  User ${email} already exists, skipping...`);
+        console.log(`User ${email} already exists, skipping...`);
         return null;
     }
 
@@ -146,17 +146,16 @@ const showtimeConfigs = [
 async function seedMovies(adminToken) {
     console.log('\n📽️  Creating test movies...');
     const createdMovies = [];
-
     for (const movie of testMovies) {
         const { status, data } = await request('POST', '/admin/movies', movie, adminToken);
-
+        const payload = data.data
         if (status === 201) {
-            console.log(`  ✅ Created: ${movie.title} (ID: ${data.id})`);
-            createdMovies.push(data);
+            console.log(`  ✅ Created: ${movie.title} (ID: ${payload.id})`);
+            createdMovies.push(payload);
         } else if (status === 409 || (data?.message?.includes('exists'))) {
             console.log(`  ⏭️  Skipped (exists): ${movie.title}`);
             // Try to find existing movie
-            const { data: listData } = await request('GET', '/movies?limit=100');
+            const { payload: listData } = await request('GET', '/movies?limit=100');
             const existing = listData?.movies?.find(m => m.title === movie.title);
             if (existing) {
                 createdMovies.push(existing);
@@ -165,7 +164,6 @@ async function seedMovies(adminToken) {
             console.log(`  ❌ Failed: ${movie.title} - ${status} - ${JSON.stringify(data)}`);
         }
     }
-
     return createdMovies;
 }
 
