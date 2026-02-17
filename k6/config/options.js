@@ -14,8 +14,8 @@ export const profiles = {
     // Normal load test
     load: {
         stages: [
-            { duration: '30s', target: 10 },  // Ramp up
-            { duration: '1m', target: 10 },   // Stay at 10 VUs
+            { duration: '30s', target: 10 },  // Ramp up : add 10 VUs 
+            { duration: '1m', target: 10 },   // Check stability : Stay at 10 VUs
             { duration: '30s', target: 0 },   // Ramp down
         ],
     },
