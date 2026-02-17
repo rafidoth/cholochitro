@@ -63,8 +63,8 @@ async function register(name, email, password) {
         password
     });
 
-    if (status === 201 && data?.token) {
-        return { token: data.token, user: data.user };
+    if (status === 201 && data?.success) {
+        return { user: data.data };
     }
 
     // User might already exist
@@ -202,7 +202,7 @@ async function seedShowtimes(adminToken, movies) {
 }
 
 async function seedTestUsers() {
-    console.log(`\n👥 Creating ${NUM_TEST_USERS} test users...`);
+    console.log(`\n=>>Creating ${NUM_TEST_USERS} test users...`);
     const createdUsers = [];
 
     for (let i = 1; i <= NUM_TEST_USERS; i++) {
@@ -213,14 +213,14 @@ async function seedTestUsers() {
         try {
             const result = await register(name, email, password);
             if (result) {
-                console.log(`  ✅ Created: ${email}`);
+                console.log(`SUCCESS : Created: ${email}`);
                 createdUsers.push({ email, password });
             } else {
                 // User exists, still track it
                 createdUsers.push({ email, password });
             }
         } catch (error) {
-            console.log(`  ❌ Failed: ${email} - ${error.message}`);
+            console.log(`  FAIL :  ${email} - ${error.message}`);
         }
     }
 
@@ -231,12 +231,14 @@ async function verifyData() {
     console.log('\n🔍 Verifying seeded data...');
 
     // Check movies
-    const { status: moviesStatus, data: moviesData } = await request('GET', '/movies?limit=100');
+    const { status: moviesStatus, data: dataM } = await request('GET', '/movies?limit=100');
+    const moviesData = dataM.data
     const k6Movies = moviesData?.movies?.filter(m => m.title.startsWith('K6 Test')) || [];
     console.log(`  Movies: ${k6Movies.length} K6 test movies found`);
 
     // Check showtimes
-    const { status: showtimesStatus, data: showtimesData } = await request('GET', '/showtimes?limit=100');
+    const { status: showtimesStatus, data: dataS } = await request('GET', '/showtimes?limit=100');
+    const showtimesData = dataS.data
     console.log(`  Showtimes: ${showtimesData?.showtimes?.length || 0} total showtimes`);
 
     // Check a showtime's seat availability
