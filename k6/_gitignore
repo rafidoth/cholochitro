@@ -1,0 +1,10 @@
+# k6 test results - auto-generated
+results/
+
+# k6 output files
+*.json
+!package.json
+
+# Temporary files
+*.tmp
+*.log
