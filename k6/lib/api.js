@@ -1,5 +1,5 @@
 import http from 'k6/http';
-import { API_BASE } from '../config/_options.js';
+import { API_BASE } from '../config/options.js';
 
 
 const defaultHeaders = {
