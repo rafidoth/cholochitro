@@ -204,10 +204,10 @@ export default function MovieDetailPage() {
                 </Link>
             </Button>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-6 gap-8">
                 {/* Movie Poster */}
                 <div className="md:col-span-1">
-                    <div className="aspect-[2/3] relative bg-muted rounded-lg overflow-hidden">
+                    <div className="aspect-[4/6] relative bg-muted rounded-sm overflow-hidden">
                         {movie.posterUrl ? (
                             <img
                                 src={movie.posterUrl}
@@ -223,7 +223,7 @@ export default function MovieDetailPage() {
                 </div>
 
                 {/* Movie Details */}
-                <div className="md:col-span-2 space-y-6">
+                <div className="md:col-span-5 space-y-6">
                     {/* Title and Status */}
                     <div>
                         <div className="flex flex-wrap items-center gap-3 mb-2">

@@ -16,9 +16,11 @@ import { Film, LogOut, Ticket, Settings } from 'lucide-react';
 
 // Hoisted static JSX elements
 const logo = (
-    <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-        <Film className="h-6 w-6" />
-        <span>Cholochitro</span>
+    <Link href="/" className="flex items-center gap-2.5 font-bold text-xl group">
+        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+            <Film className="h-5 w-5 text-primary" />
+        </div>
+        <span className="tracking-tight">Cholochitro</span>
     </Link>
 );
 
@@ -58,7 +60,7 @@ const NavLink = memo(function NavLink({
     return (
         <Link
             href={href}
-            className="text-sm font-medium hover:text-primary transition-colors"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
             {children}
         </Link>
@@ -142,7 +144,7 @@ export function Header() {
     const showLoading = !hasMounted || isLoading;
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex justify-center">
+        <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 flex justify-center">
             <div className="container flex h-16 items-center justify-between">
                 <div className="flex items-center gap-6">
                     {logo}
