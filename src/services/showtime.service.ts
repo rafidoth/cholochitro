@@ -3,6 +3,10 @@ import { movieRepository } from "@/data/movie.data";
 import type { CreateShowtimeRequest, UpdateShowtimeRequest, ListShowtimesQuery } from "@/types/showtime.schema";
 import type { Showtime, ShowtimeResponse } from "@/types/showtime";
 
+const DEFAULT_TIME_SLOTS = ["10:00", "14:00", "18:00", "21:00"];
+const DEFAULT_PRICE = 250;
+const GENERATION_DAYS = 3;
+
 export class ShowtimeServiceError extends Error {
     constructor(
         message: string,
@@ -58,8 +62,37 @@ export const showtimeService = {
             throw new ShowtimeServiceError("Movie not found", "MOVIE_NOT_FOUND", 404);
         }
 
-        const showtimes = await showtimeRepository.findByMovieId(movieId);
+        let showtimes = await showtimeRepository.findByMovieId(movieId);
+
+        if (movie.status === "now_showing") {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const hasUpcoming = showtimes.some((s) => new Date(s.showDate) >= today);
+
+            if (!hasUpcoming) {
+                const generated = await this.generateShowtimes(movieId);
+                showtimes = [...showtimes, ...generated];
+            }
+        }
+
         return showtimes.map(toShowtimeResponse);
+    },
+
+    async generateShowtimes(movieId: string): Promise<Showtime[]> {
+        const items: { movieId: string; showDate: string; showTime: string; price: number }[] = [];
+        const today = new Date();
+
+        for (let day = 1; day <= GENERATION_DAYS; day++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + day);
+            const showDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+            for (const showTime of DEFAULT_TIME_SLOTS) {
+                items.push({ movieId, showDate, showTime, price: DEFAULT_PRICE });
+            }
+        }
+
+        return showtimeRepository.createMany(items);
     },
 
     async list(query: ListShowtimesQuery): Promise<{

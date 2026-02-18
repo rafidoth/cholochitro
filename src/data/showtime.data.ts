@@ -18,6 +18,33 @@ export const showtimeRepository = {
         return mapRowToShowtime(result.rows[0]);
     },
 
+    async createMany(items: {
+        movieId: string;
+        showDate: string;
+        showTime: string;
+        price: number;
+    }[]): Promise<Showtime[]> {
+        if (items.length === 0) return [];
+
+        const valuePlaceholders: string[] = [];
+        const values: (string | number)[] = [];
+        let paramIndex = 1;
+
+        for (const item of items) {
+            valuePlaceholders.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3})`);
+            values.push(item.movieId, item.showDate, item.showTime, item.price);
+            paramIndex += 4;
+        }
+
+        const query = `
+            INSERT INTO showtimes (movie_id, show_date, show_time, price)
+            VALUES ${valuePlaceholders.join(', ')}
+            RETURNING id, movie_id, show_date, show_time, price, created_at, updated_at
+        `;
+        const result = await pool.query(query, values);
+        return result.rows.map(mapRowToShowtime);
+    },
+
     async findById(id: string): Promise<Showtime | null> {
         const query = `
             SELECT id, movie_id, show_date, show_time, price, created_at, updated_at
